@@ -1,0 +1,229 @@
+﻿
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_LayoutPretty.cshtml";
+}
+
+@section styles{
+    <link href="~/Content/inspinia-style.css" rel="stylesheet" />
+    <style type="text/css">
+        .float-e-margins {
+            padding-top: 0px;
+            padding-bottom: 0px;
+            margin-top: 3px;
+            margin-bottom: 3px;
+        }
+        .category-container{
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+    </style>
+}
+
+<div class="row wrapper border-bottom white-bg page-heading">
+    <div class="col-lg-12" style="text-align:center;">
+        <h2>Frequently Asked Questions</h2>
+        <ol class="breadcrumb">
+            <li><a href="http://cart.dev/FAQs/add"><strong>Add FAQ</strong></a></li>
+            <li><a id="show-answers-btn" href="javascript:void(0)">Show all answers</a></li>
+        </ol>
+    </div>
+    <div class="col-lg-2">
+    </div>
+</div>
+
+<div class="row" style="padding-bottom: 42px; padding-top: 5px;">
+    <div class="collapse-link-container" id="main-append">
+        
+    </div>
+</div>
+
+@section scripts{
+<script type="text/javascript" src="~/Scripts/jquery.validate.js"></script>
+<script type="text/javascript" src="~/Scripts/sabio.services.faqs.js"></script>
+<script type="text/javascript" src="~/Scripts/sabio/core/sabio.ui.js"></script>
+<script type="text/javascript" src="~/Scripts/moment.js"></script>
+<script type="text/javascript">
+    sabio.page.faqCategories = @typeof(FAQCategory).EnumToJsonByValue();
+</script>
+<script type="text/javascript">
+
+    sabio.page.startUp = function() {
+        sabio.page.renderCategory();
+        sabio.page.getFaqs();
+        $('.collapse-link-container').on("click", '.collapse-link', sabio.page.handlers.onCollapseClick);
+        $('.collapse-link-container').on("click", '.delete-btn', sabio.page.handlers.onDeleteClick);
+        $('#show-answers-btn').on("click", sabio.page.handlers.onShowAnswersBtnClick);
+    }
+
+    sabio.page.renderCategory = function(){
+        var categories = sabio.page.faqCategories;
+
+        for( var i = 1; i < Object.keys(categories).length + 1; i++){
+            var $categoryTemplate = $($('#category-template').html());
+            $categoryTemplate.find('h3').text(categories[i])
+            $categoryTemplate.closest('.category-container').attr("id", "category-"+[i]);
+            $('#main-append').append($categoryTemplate);
+            console.log(categories[i]);
+        };
+    };
+
+    sabio.page.getFaqs = function () {
+        sabio.services.faqs.getAll(sabio.page.handlers.onGetAllSuccess, sabio.page.handlers.onError);
+    }
+
+    sabio.page.renderFaqs = function (faqs) {
+        for (var i = 0; i < faqs.length; i++) {
+            sabio.page.renderFAQ(faqs[i]);
+            console.log(faqs[i].id);
+        }
+    }
+
+    //renders the comments to the dom
+    sabio.page.renderFAQ = function (faq) {
+        var question = faq.question;
+        var answer = faq.answer;
+        var user = faq.userId;
+        var dateTime = moment(faq.dateModified).format('MMMM D, YYYY h:mm A');
+        if(faq.userMiddleInitial){
+            var fullName = faq.user.firstName + " " + faq.user.middleInitial + " " + faq.user.lastName;
+        } else {
+            var fullName = faq.user.firstName + " " + faq.user.lastName;
+        };
+        var $element = $($('#faq-template').html());
+        $element.find('h5').text(question);
+        $element.find('#temp-answer').html(answer);
+        $element.find('#url').attr("href", "/FAQs/edit/" + faq.id);
+        $element.find('.fa-clock-o').text("Created by "+ fullName + " and last modified on "+ dateTime);
+        $element.closest('.template-container').attr("id", faq.id);
+
+        $('#category-'+ faq.category).append($element);
+    }
+    
+    sabio.page.handlers.onDeleteClick = function () {
+        var location = $(this).closest('.template-container');
+        
+        sabio.ui.confirm("Are you sure you want to delete?", sabio.page.handlers.onDeleteConfirm, location);
+        console.log("pressed delete btn");
+    };
+
+    sabio.page.handlers.onDeleteConfirm = function (location) {
+        var id = location.attr("id");
+        console.log(id);
+        sabio.services.faqs.delete(id, sabio.page.handlers.onDeleteSuccess, sabio.page.handlers.onError);
+        console.log("Will delete FAQ ID: " + id + "question.");
+    }
+
+    sabio.page.deleteFaq = function(id) {
+        var $faq = $('[id=' + id + ']');
+        $faq.remove();
+        console.log("Id: " + id + " successfully deleted");
+        sabio.ui.alert("Successfully Deleted");
+    };
+
+    sabio.page.handlers.onCollapseClick = function () {
+        var locationClicked = $(this)
+        sabio.page.collapseAnswer(locationClicked);
+            
+    };
+
+    sabio.page.handlers.onShowAnswersBtnClick = function(){
+        sabio.page.showHideAll();
+    };
+
+    sabio.page.showHideAll = function(){
+        var locAllCollapse = $('.collapse-link');
+        var overrideAction = null;
+        if($('#show-answers-btn').text() == "Show all answers"){
+            $('#show-answers-btn').text("Hide all answers");
+           
+            locAllCollapse = $('.fa-chevron-down').closest('.collapse-link');
+        } else{
+            $('#show-answers-btn').text("Show all answers");
+           
+            locAllCollapse = $('.fa-chevron-up').closest('.collapse-link');
+        }
+        sabio.page.collapseAnswer(locAllCollapse);
+    }
+
+    sabio.page.collapseAnswer = function(locationClicked){
+        var ibox = locationClicked.closest('div.ibox');
+        var button = locationClicked.find('i');
+        var content = ibox.find('div.ibox-content');
+        
+        content.slideToggle(200);
+        button.toggleClass('fa-chevron-up').toggleClass('fa-chevron-down');
+        ibox.toggleClass('').toggleClass('border-bottom');
+        setTimeout(function () {
+            ibox.resize();
+            ibox.find('[id^=map-]').resize();
+        }, 50);
+        console.log("collapse");
+        
+    }
+
+    //Ajax Success and error
+    sabio.page.handlers.onDeleteSuccess = function (faqId) {
+        sabio.page.deleteFaq(faqId);
+    }
+
+    sabio.page.handlers.onGetAllSuccess = function (responseData) {
+        sabio.page.renderFaqs(responseData.items);
+    }
+
+    sabio.page.handlers.onError = function () {
+        console.log("Error")
+    }
+
+</script>
+
+<script type="text/template" id="faq-template">
+    <div class="col-lg-12 main-container template-container">
+        <div class="ibox float-e-margins border-bottom">
+            <div class="ibox-title">
+                <h5>Is this my question?</h5>
+                <div class="ibox-tools">
+                    <a class="collapse-link">
+                        <i class="fa fa-chevron-down"></i>
+                    </a>
+                    <a class="dropdown-toggle" data-toggle="dropdown" href="javascript:void(0)">
+                        <i class="fa fa-wrench"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-user">
+                        <li>
+                            <a href="javascript:void(0)">Edit</a>
+                        </li>
+                    </ul>
+                    <ul class="dropdown-menu dropdown-user">
+                        <li>
+                            <a id="url" href="javascript:void(0)">Edit</a>
+                        </li>
+                    </ul>
+                    <a class="close-link delete-btn">
+                        <i class="fa fa-times"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="ibox-content" style="display:none">
+                
+                <div id="temp-answer"></div>
+                
+                <small class="block text-muted" style="text-align:center">
+                <i style="font-style:italic" class="fa fa-clock-o">Date and Time Modified</i>
+                </small>
+            </div>
+        </div>
+    </div>
+</script>
+
+<script type="text/template" id="category-template">
+    <div class="col-lg-12 main-container category-container">
+        <div class="ibox float-e-margins border-bottom">
+            <div class="ibox-title">
+                <h3 style="text-align: center">Category</h3>
+            </div>
+        </div>
+    </div>
+</script>
+
+}
